@@ -1,0 +1,83 @@
+  <body class='session'>
+   <div class="container-fluid">
+    <div class="row">
+     <div class="col-md-4" id="affdex_elements" style="width:680px;height:480px;"></div>
+     <video id="video" width="640" height="360" preload controls>
+      <source src="video.mp4" />
+     </video>
+     <canvas id='canvas'></canvas>
+    </div>
+   <div class="col-md-4">
+    <div style="height:25em;">
+      <strong>EMOTION TRACKING RESULTS</strong>
+      <div id="results" style="word-wrap:break-word;"></div>
+    </div>
+   </div>
+   </div> 
+  <script type="text/javascript" src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
+  <script src="https://download.affectiva.com/js/3.1/affdex.js"></script>
+  <script>
+    //Timestamp initialization
+    var startTimestamp = ( new Date() ).getTime() / 1000 ;
+    var width = 640;
+    var height = 480;
+    var vid = document.getElementById('video');
+    var canv = document.getElementById('canvas');
+    var im = canv.getContext('2d');
+    canv.width = width;
+    canv.height = height; 
+      /*affdex.FaceDetectorMode.LARGE_FACES=Faces occupying large portions of the frame
+     affdex.FaceDetectorMode.SMALL_FACES=Faces occupying small portions of the frame*/
+    var faceMode = affdex.FaceDetectorMode.SMALL_FACES;
+    //Construct a FrameDetector and specify the image width / height and face detector mode.
+    var detector = new affdex.FrameDetector(faceMode);
+      //turn on the detection of all expressions, appearances, emotions or emojis:
+    detector.detectAllExpressions();
+    detector.detectAllEmotions();
+    detector.detectAllEmojis();
+    detector.detectAllAppearance();
+    //start the detector
+    detector.start();
+
+    detector.addEventListener("onInitializeSuccess", function() {
+      console.log('Detector initialized.');
+     //start with the first capture
+      captureImage();
+    });
+
+    detector.addEventListener("onImageResultsSuccess", function (faces, image, timestamp) {
+      captureImage();
+        $('#results').html("Timestamp: " + timestamp + "\n Number of faces found: " + faces.length).html();
+        if (faces.length > 0) { 
+          $('#results').html($('#results').html() +"Appearance: " + JSON.stringify(faces[0].appearance));
+          $('#results').html($('#results').html()+"Emotions: " + JSON.stringify(faces[0].emotions, function(key, val) {
+            return val.toFixed ? Number(val.toFixed(0)) : val;
+          }));
+          $('#results').html($('#results').html()+$('#results').html()+"Expressions: " + JSON.stringify(faces[0].expressions, function(key, val) {
+            return val.toFixed ? Number(val.toFixed(0)) : val;
+          }));
+          $('#results').html( $('#results').html()+"Emoji: " + faces[0].emojis.dominantEmoji);
+        }
+
+      });
+
+    detector.addEventListener("onImageResultsFailure", function (image, timestamp, err_detail) {
+      console.log( "image result failure " + err_detail );
+      captureImage();
+    });
+
+    //captures an image from a video and processes it
+    function captureImage() {
+      //show the image frames to be analysed
+      im.clearRect( 0, 0, canv.width, canv.height );
+      im.drawImage( vid, 0, 0, width, height );
+      //Get imageData object to be used by the detector 
+      var imgData = im.getImageData(0, 0, width, height);
+      //get current  time
+      var now = ( new Date() ).getTime() / 1000;
+      //timestamp = now-startTimestamp
+      detector.process( imgData, now-startTimestamp );
+    }
+    //stop the detector
+    detector.stop();
+    </script>
